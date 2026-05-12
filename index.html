@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AI Voice Agent</title>
+  </head>
+
+  <body>
+    <button onclick="startListening()">
+      Speak
+    </button>
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+    <script>
+      // CONNECT TO NESTJS SOCKET SERVER
+      const socket = io("http://localhost:8585");
+
+      // SAFE SPEECH RECOGNITION
+      const SpeechRecognition =
+        window.SpeechRecognition ||
+        window.webkitSpeechRecognition;
+
+      const recognition = new SpeechRecognition();
+
+      // CONFIG
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = "en-US";
+
+      // START LISTENING
+      function startListening() {
+        console.log("Starting speech recognition...");
+
+        recognition.start();
+      }
+
+      // WHEN SPEECH STARTS
+      recognition.onstart = () => {
+        console.log("Speech recognition started");
+      };
+
+      // WHEN SPEECH ENDS
+      recognition.onend = () => {
+        console.log("Speech recognition ended");
+      };
+
+      // HANDLE ERRORS
+      recognition.onerror = (event) => {
+        console.log("Speech recognition error:", event);
+      };
+
+      // WHEN USER SPEAKS
+      recognition.onresult = (event) => {
+        const text = event.results[0][0].transcript;
+
+        console.log("USER:", text);
+
+        // STOP CURRENT AUDIO IF PLAYING
+        speechSynthesis.cancel();
+
+        // SEND TEXT TO NESTJS
+        socket.emit("user-message", {
+          text,
+          sessionId: "abc123",
+        });
+      };
+
+      // RECEIVE AI RESPONSE
+      socket.on("ai-response", (data) => {
+        console.log("AI:", data.text);
+
+        // PLAY AUDIO
+        const audio = new Audio(
+          "data:audio/mp3;base64," + data.audio
+        );
+
+        audio.play();
+      });
+
+      // SOCKET CONNECTED
+      socket.on("connect", () => {
+        console.log("Connected to server");
+      });
+
+      // SOCKET ERROR
+      socket.on("connect_error", (err) => {
+        console.log("Socket connection error:", err);
+      });
+    </script>
+  </body>
+</html>
